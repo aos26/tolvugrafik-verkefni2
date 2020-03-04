@@ -31,17 +31,7 @@ var eyesep = 0.2;
 var proLoc;
 var mvLoc;
 
-/*/ the 8 vertices of the cube
-var v = [
-    vec3(-0.5, -0.5, 0.5),
-    vec3(-0.5, 0.5, 0.5),
-    vec3(0.5, 0.5, 0.5),
-    vec3(0.5, -0.5, 0.5),
-    vec3(-0.5, -0.5, -0.5),
-    vec3(-0.5, 0.5, -0.5),
-    vec3(0.5, 0.5, -0.5),
-    vec3(0.5, -0.5, -0.5)
-];*/
+let snakeBody = [];
 
 var v = [
     vec3(-1.0, -1.0, 1.0),
@@ -59,6 +49,11 @@ v[4], v[5], v[5], v[6], v[6], v[7], v[7], v[4],
 v[0], v[4], v[1], v[5], v[2], v[6], v[3], v[7]
 ];
 
+var vertices = [];
+
+var NumVerticesSnake = 0;
+var NumVerticesBox = lines.length;
+
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
 
@@ -66,6 +61,10 @@ window.onload = function init() {
     if (!gl) { alert("WebGL isn't available"); }
 
     colorCube();
+
+    vertices = pointsSnake.concat(lines);
+
+    NumVerticesSnake = pointsSnake.length;
 
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -80,19 +79,7 @@ window.onload = function init() {
 
     vBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(lines), gl.STATIC_DRAW);
-
-    /*/ SNAKE
-    var snakeColorBuffer = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, snakeColorBuffer );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(colorsSnake), gl.STATIC_DRAW );
-
-    var snakeBuffer = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, snakeBuffer );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(pointsSnake), gl.STATIC_DRAW );
-
-    //************************************************************ */
-
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW);
 
     vPosition = gl.getAttribLocation(program, "vPosition");
     gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
@@ -105,6 +92,13 @@ window.onload = function init() {
 
     var proj = perspective(50.0, 1.0, 0.2, 100.0);
     gl.uniformMatrix4fv(proLoc, false, flatten(proj));
+    
+    snakeBody.push(Snake(true));
+    for (let i = 0; i < 4; i++) {
+        snakeBody.push(Snake(false));
+    }
+    snakeBody.reverse();
+    console.log(snakeBody)
 
     //event listeners for mouse
     canvas.addEventListener("mousedown", function (e) {
@@ -164,14 +158,14 @@ function colorCube()
 function quad(a, b, c, d) 
 {
     var vertices = [
-        vec3( -0.5, -0.5,  0.5 ),
-        vec3( -0.5,  0.5,  0.5 ),
-        vec3(  0.5,  0.5,  0.5 ),
-        vec3(  0.5, -0.5,  0.5 ),
-        vec3( -0.5, -0.5, -0.5 ),
-        vec3( -0.5,  0.5, -0.5 ),
-        vec3(  0.5,  0.5, -0.5 ),
-        vec3(  0.5, -0.5, -0.5 )
+        vec3( -0.1, -0.1,  0.1 ),
+        vec3( -0.1,  0.1,  0.1 ),
+        vec3(  0.1,  0.1,  0.1 ),
+        vec3(  0.1, -0.1,  0.1 ),
+        vec3( -0.1, -0.1, -0.1 ),
+        vec3( -0.1,  0.1, -0.1 ),
+        vec3(  0.1,  0.1, -0.1 ),
+        vec3(  0.1, -0.1, -0.1 )
     ];
 
     var vertexColors = [
@@ -203,31 +197,64 @@ function quad(a, b, c, d)
     }
 }
 
+function Snake(head) {
+    let c = vec4(1.0, 0.0, 0.0, 1.0);
+    if(head) {
+        c = vec4(0.0, 0.0, 1.0, 1.0);
+    }
+    return {
+        pos: {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        speed: 0.01,
+        size: 0.5,
+        color: c,
+    };
+}
+
+function drawSnake(mv, snake, i) {
+    //console.log(snake);
+    mv = mult(mv, translate(snake.pos.x + i, snake.pos.y+ i, snake.pos.z+ i ));
+    mv = mult( mv, scalem (snake.size, snake.size, snake.size ));
+
+    /*console.log(vertices.length)
+    console.log(NumVerticesSnake)
+    */
+
+    gl.uniform4fv( colorLoc, snake.color); 
+    gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
+    gl.drawArrays( gl.TRIANGLES, 0, NumVerticesSnake);//NumVerticesSnake);
+}
+
+function updateSnake(snake) {
+    snake.pos = {
+        x: snake.speed,
+        y: 0,
+        y: 0,
+    };
+}
 
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // Vinstra auga...
-    var mv = lookAt(vec3(0.0 / 2.0, 0.0, zDist),
+    var mv = lookAt(vec3(0.0 , 0.0, zDist),
         vec3(0.0, 0.0, zDist + 2.0),
         vec3(0.0, 1.0, 0.0));
     mv = mult(mv, mult(rotateX(spinX), rotateY(spinY)));
 
-    // Vinstri mynd er í rauðu...
-    /* gl.uniform4fv(colorLoc, vec4(1.0, 0.0, 0.0, 1.0));
-     gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
-     gl.drawArrays(gl.LINES, 0, NumVertices);
- */
-    /*/ Hægra auga...
-    mv = lookAt(vec3(0.0 + eyesep / 2.0, 0.0, zDist),
-        vec3(0.0, 0.0, zDist + 2.0),
-        vec3(0.0, 1.0, 0.0));
-    mv = mult(mv, mult(rotateX(spinX), rotateY(spinY)));
-*/
-    // Hægri mynd er í grænbláu (cyan)...
+    for (let i = 0; i < snakeBody.length; i++) {
+        //updateSnake(snakeBody[i]);
+        drawSnake(mv, snakeBody[i], i*0.1);
+    }
+
+    //mv = mult( mv, scalem ( (15), (15), (15) ) );
+    // Teikna kassa
     gl.uniform4fv(colorLoc, vec4(0.0, 1.0, 0.0, 1.0));
     gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
-    gl.drawArrays(gl.LINES, 0, NumVertices);
+    gl.drawArrays(gl.LINES, NumVerticesSnake, NumVerticesBox);
 
     
 
