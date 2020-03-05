@@ -54,6 +54,14 @@ var vertices = [];
 
 var NumVerticesSnake = 0;
 var NumVerticesBox = lines.length;
+let count = 0;
+
+let old_time = 0;
+
+let speed = 200;
+let dt = 0;
+
+let userDirection = 0;
 
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
@@ -95,12 +103,15 @@ window.onload = function init() {
     gl.uniformMatrix4fv(proLoc, false, flatten(proj));
 
     snakeBody.push(Snake(true));
+    
     for (let i = 0; i < 4; i++) {
         snakeBody.push(Snake(false));
+        //snakeBody.unshift(Snake(false));
+
     }
 
     //snakeBody.reverse();
-    console.log(snakeBody)
+    //console.log(snakeBody)
 
     //event listeners for mouse
     canvas.addEventListener("mousedown", function (e) {
@@ -127,11 +138,24 @@ window.onload = function init() {
     window.addEventListener("keydown", function (e) {
         switch (e.keyCode) {
             case 38:	// upp ör
-                zDist += 0.1;
+                userDirection = 1;
                 break;
             case 40:	// niður ör
-                zDist -= 0.1;
+                userDirection = 0;
                 break;
+            case 37:	// vinstri ör
+                userDirection = 3;
+                break;
+            case 39:	// niður ör
+                userDirection = 2;
+                break;
+            case 83:	// s
+                userDirection = 4;
+                break;
+            case 87:	// w
+                userDirection = 5;
+                break;
+            
         }
     });
 
@@ -144,7 +168,7 @@ window.onload = function init() {
         }
     });
 
-    render();
+    render(0);
 }
 
 function colorCube() {
@@ -197,6 +221,17 @@ function quad(a, b, c, d) {
     }
 }
 
+/**
+ * 
+ * @param {boolean} head Segir til hvort það sé haus eða ekki.
+ * Dir:
+ *      0 - Niður -y
+ *      1 - Upp +y
+ *      2 - Hægri -x
+ *      3 - Vinstri +x
+ *      4 - Áfram -z Í átt að notanda
+ *      5 - Til baka +z
+ */
 function Snake(head) {
     let c = vec4(1.0, 0.0, 0.0, 1.0);
     if (head) {
@@ -208,20 +243,38 @@ function Snake(head) {
             y: 0.0,
             z: 0.0,
         },
-        speed: 0.1,
+        speed: 0.05,
         size: 0.5,
         color: c,
         head: head, // True ef haus, false annars
+        dir: 0, // Í hvaða átt er snákurinn að fara.
     };
 }
 
-function drawSnake(mv, snake) {
-    //console.log(snake);
-    if (snake.head) {
-        mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-    } else {
-        mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+function drawSnake(mv, snake, i) {
+    mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+    /*/console.log(snake)
+    switch (snake.dir) {
+        case 0: // Niður
+            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+            break;
+        case 1: // Upp
+            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+        case 2: // Vinstri
+            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+            break;
+        case 3: // Hægri
+            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+        case 4: // Áfram
+            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+            break;
+        case 5: // Til baka
+            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
+        default:
+            break;
+            
     }
+    */
     mv = mult(mv, scalem(snake.size, snake.size, snake.size));
 
     gl.uniform4fv(colorLoc, snake.color);
@@ -233,24 +286,57 @@ function updateSnake(snakeHead, snakeTail) {
     snakeTail.pos = snakeHead.pos;
 }
 
-function moveSnake(snake) {
-    snake.pos = {
-        x: snake.pos.x + snake.speed,
-        y: 0,
-        z: 0,
-    };
-    drawCounter = 1;
-    while (drawCounter < snakeBody.length) {
-        for (let i = 1; i < drawCounter; i++) {
-            updateSnake(snakeBody[i - 1], snakeBody[i]);
-        }
-        drawCounter++;
+function moveSnake(snake, direction) {
+    snake.dir = direction;
+
+    switch (direction) {
+        case 0: // Niður
+            snake.pos = {
+                x: snake.pos.x,
+                y: snake.pos.y - snake.speed,
+                z: snake.pos.z,
+            };
+            break;
+        case 1: // Upp
+            snake.pos = {
+                x: snake.pos.x + snake.speed,
+                y: snake.pos.y + snake.speed,
+                z: snake.pos.z,
+            };
+        case 2: // Hægri 
+            snake.pos = {
+                x: snake.pos.x - snake.speed,
+                y: snake.pos.y,
+                z: snake.pos.z,
+            };
+            break;
+        case 3: // Vinstri
+            snake.pos = {
+                x: snake.pos.x + snake.speed,
+                y: snake.pos.y,
+                z: snake.pos.z,
+            };
+        case 4: // Áfram
+            snake.pos = {
+                x: snake.pos.x,
+                y: snake.pos.y,
+                z: snake.pos.z - snake.speed,
+            };
+            break;
+        case 5: // Til baka
+            snake.pos = {
+                x: snake.pos.x,
+                y: snake.pos.y,
+                z: snake.pos.z + snake.speed,
+            };
+        default:
+            break;
     }
 
 }
 
-function render() {
-    setTimeout(function () {
+function render(time) {
+    //setTimeout(function () {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         // Vinstra auga...
@@ -259,23 +345,19 @@ function render() {
             vec3(0.0, 1.0, 0.0));
         mv = mult(mv, mult(rotateX(spinX), rotateY(spinY)));
 
-
-
-        moveSnake(snakeBody[0]);
-        /*
-        if (drawCounter > snakeBody.length) {
-            drawCounter = 1;
+        dt = time - old_time;
+        if(Math.abs(dt) >= speed){
+            for (let i = snakeBody.length - 1; i > 0; i--) {
+                snakeBody[i].pos = snakeBody[i - 1].pos;
+                snakeBody[i].dir = snakeBody[i - 1].dir;
+            }
+            
+            moveSnake(snakeBody[0], userDirection);
+            old_time = time;
         }
-        for (let i = 1; i < drawCounter; i++) {
-            updateSnake(snakeBody[i - 1], snakeBody[i]);
-        }
-        drawCounter++;
-        */
-
-
-
+    
         for (let i = 0; i < snakeBody.length; i++) {
-            drawSnake(mv, snakeBody[i]);
+            drawSnake(mv, snakeBody[i], i);
         }
         //mv = mult( mv, scalem ( (15), (15), (15) ) );
         // Teikna kassa
@@ -284,7 +366,7 @@ function render() {
         gl.drawArrays(gl.LINES, NumVerticesSnake, NumVerticesBox);
 
 
-        window.requestAnimFrame(render);
-    }, 60);
-    //requestAnimFrame(render);
+        /*window.requestAnimFrame(render);
+    }, 600);*/
+    requestAnimFrame(render);
 }
