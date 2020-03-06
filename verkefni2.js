@@ -54,7 +54,7 @@ var vertices = [];
 
 var NumVerticesSnake = 0;
 var NumVerticesBox = lines.length;
-let count = 0;
+let countMoves = 0;
 
 let old_time = 0;
 
@@ -104,7 +104,7 @@ window.onload = function init() {
 
     snakeBody.push(Snake(true));
     
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
         snakeBody.push(Snake(false));
         //snakeBody.unshift(Snake(false));
 
@@ -146,7 +146,7 @@ window.onload = function init() {
             case 37:	// vinstri ör
                 userDirection = 3;
                 break;
-            case 39:	// niður ör
+            case 39:	// hægri ör
                 userDirection = 2;
                 break;
             case 83:	// s
@@ -235,7 +235,7 @@ function quad(a, b, c, d) {
 function Snake(head) {
     let c = vec4(1.0, 0.0, 0.0, 1.0);
     if (head) {
-        c = vec4(0.0, 0.0, 1.0, 1.0);
+        c = vec4(1.0, 1.0, 0.0, 1.0);
     }
     return {
         pos: {
@@ -243,38 +243,15 @@ function Snake(head) {
             y: 0.0,
             z: 0.0,
         },
-        speed: 0.05,
+        speed: 0.1,
         size: 0.5,
         color: c,
         head: head, // True ef haus, false annars
-        dir: 0, // Í hvaða átt er snákurinn að fara.
     };
 }
 
 function drawSnake(mv, snake, i) {
     mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-    /*/console.log(snake)
-    switch (snake.dir) {
-        case 0: // Niður
-            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-            break;
-        case 1: // Upp
-            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-        case 2: // Vinstri
-            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-            break;
-        case 3: // Hægri
-            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-        case 4: // Áfram
-            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-            break;
-        case 5: // Til baka
-            mv = mult(mv, translate(snake.pos.x, snake.pos.y, snake.pos.z));
-        default:
-            break;
-            
-    }
-    */
     mv = mult(mv, scalem(snake.size, snake.size, snake.size));
 
     gl.uniform4fv(colorLoc, snake.color);
@@ -282,12 +259,8 @@ function drawSnake(mv, snake, i) {
     gl.drawArrays(gl.TRIANGLES, 0, NumVerticesSnake);//NumVerticesSnake);
 }
 
-function updateSnake(snakeHead, snakeTail) {
-    snakeTail.pos = snakeHead.pos;
-}
 
 function moveSnake(snake, direction) {
-    snake.dir = direction;
 
     switch (direction) {
         case 0: // Niður
@@ -304,18 +277,35 @@ function moveSnake(snake, direction) {
                 z: snake.pos.z,
             };
         case 2: // Hægri 
+            
             snake.pos = {
                 x: snake.pos.x - snake.speed,
                 y: snake.pos.y,
                 z: snake.pos.z,
             };
+            if(snake.pos.x <= -1.0){
+                snake.pos = {
+                    x: 0.9 + snake.speed,
+                    y: snake.pos.y,
+                    z: snake.pos.z,
+                }
+            }
             break;
-        case 3: // Vinstri
+        case 3: // Vinstri            
             snake.pos = {
                 x: snake.pos.x + snake.speed,
                 y: snake.pos.y,
                 z: snake.pos.z,
             };
+            if(snake.pos.x >= 1.0){
+                snake.pos = {
+                    x: -0.9 - snake.speed,
+                    y: snake.pos.y,
+                    z: snake.pos.z,
+                }
+            }
+            break;
+
         case 4: // Áfram
             snake.pos = {
                 x: snake.pos.x,
@@ -335,6 +325,10 @@ function moveSnake(snake, direction) {
 
 }
 
+function getRandomInt(max) {
+    return Math.floor(Math.random() * Math.floor(max));
+  }
+
 function render(time) {
     //setTimeout(function () {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -349,10 +343,15 @@ function render(time) {
         if(Math.abs(dt) >= speed){
             for (let i = snakeBody.length - 1; i > 0; i--) {
                 snakeBody[i].pos = snakeBody[i - 1].pos;
-                snakeBody[i].dir = snakeBody[i - 1].dir;
             }
             
+            if (countMoves == 10) {
+                userDirection = getRandomInt(6);
+                countMoves = 0;
+            }
             moveSnake(snakeBody[0], userDirection);
+            countMoves++;
+
             old_time = time;
         }
     
