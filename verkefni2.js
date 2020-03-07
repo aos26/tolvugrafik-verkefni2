@@ -19,11 +19,14 @@ var drawCounter = 1;
 var timeInDir = 10;
 var timeToGrow = 50;
 var movesTillGrowth = 0;
+var movesExplosion = 0;
+let isGameOver = false;
+let gameMenu;
 
 var vBuffer;
 var vPosition;
 
-var movement = false;     // Do we rotate?
+var movement = false; // Do we rotate?
 var spinX = 0;
 var spinY = 0;
 var origX;
@@ -49,8 +52,8 @@ var v = [
 ];
 
 var lines = [v[0], v[1], v[1], v[2], v[2], v[3], v[3], v[0],
-v[4], v[5], v[5], v[6], v[6], v[7], v[7], v[4],
-v[0], v[4], v[1], v[5], v[2], v[6], v[3], v[7]
+    v[4], v[5], v[5], v[6], v[6], v[7], v[7], v[4],
+    v[0], v[4], v[1], v[5], v[2], v[6], v[3], v[7]
 ];
 
 var vertices = [];
@@ -67,10 +70,12 @@ let dt = 0;
 let userDirection = 0;
 let prevDirection = 0;
 
-let isGameOver = false;
 
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
+    gameMenu = document.getElementById("game-menu");
+
+    gameMenu.style.display = "none";
 
     gl = WebGLUtils.setupWebGL(canvas);
     if (!gl) { alert("WebGL isn't available"); }
@@ -109,36 +114,32 @@ window.onload = function init() {
     gl.uniformMatrix4fv(proLoc, false, flatten(proj));
 
     snakeBody.push(Snake(true));
-    
-    for (let i = 0; i < 5; i++) {
-        snakeBody.push(Snake(false));
-        //snakeBody.unshift(Snake(false));
 
+    for (let i = 0; i < 4; i++) {
+        snakeBody.push(Snake(false));
     }
 
-    document.getElementById("slider").onchange = function(event) {
+    document.getElementById("sliderTime").onchange = function(event) {
         timeInDir = event.target.value;
     }
-    document.getElementById("slider").onchange = function(event) {
+    document.getElementById("sliderMoves").onchange = function(event) {
         movesTillGrowth = event.target.value;
     }
 
-    //snakeBody.reverse();
-    //console.log(snakeBody)
 
     //event listeners for mouse
-    canvas.addEventListener("mousedown", function (e) {
+    canvas.addEventListener("mousedown", function(e) {
         movement = true;
         origX = e.offsetX;
         origY = e.offsetY;
-        e.preventDefault();         // Disable drag and drop
+        e.preventDefault(); // Disable drag and drop
     });
 
-    canvas.addEventListener("mouseup", function (e) {
+    canvas.addEventListener("mouseup", function(e) {
         movement = false;
     });
 
-    canvas.addEventListener("mousemove", function (e) {
+    canvas.addEventListener("mousemove", function(e) {
         if (movement) {
             spinY = (spinY + (origX - e.offsetX)) % 360;
             spinX = (spinX + (e.offsetY - origY)) % 360;
@@ -148,32 +149,32 @@ window.onload = function init() {
     });
 
     // Event listener for keyboard
-    window.addEventListener("keydown", function (e) {
+    window.addEventListener("keydown", function(e) {
         switch (e.keyCode) {
-            case 38:	// upp ör
+            case 38: // upp ör
                 userDirection = 1;
                 break;
-            case 40:	// niður ör
+            case 40: // niður ör
                 userDirection = 0;
                 break;
-            case 37:	// vinstri ör
+            case 37: // vinstri ör
                 userDirection = 3;
                 break;
-            case 39:	// hægri ör
+            case 39: // hægri ör
                 userDirection = 2;
                 break;
-            case 83:	// s
+            case 83: // s
                 userDirection = 4;
                 break;
-            case 87:	// w
+            case 87: // w
                 userDirection = 5;
                 break;
-            
+
         }
     });
 
     // Event listener for mousewheel
-    window.addEventListener("mousewheel", function (e) {
+    window.addEventListener("mousewheel", function(e) {
         if (e.wheelDelta > 0.0) {
             zDist += 0.1;
         } else {
@@ -183,16 +184,6 @@ window.onload = function init() {
 
     render(0);
 }
-
-/*
-function drawFrame(mv, snake) {
-    mv = mult(mv, translate(snake.pos.x * 2 - 5, snake.pos.y * 2 - 19, snake.pos.z * 2 - 5));
-    // white frame arond the block
-    gl.uniform4fv(colorLoc, vec4(0.5, 0.5, 0.5, 1.0));
-    gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
-    gl.drawArrays(gl.LINE_STRIP, Numfill, Numframe);
-  }
-  */
 
 function colorCube() {
     quad(1, 0, 3, 2);
@@ -216,29 +207,20 @@ function quad(a, b, c, d) {
     ];
 
     var vertexColors = [
-        [0.0, 0.0, 0.0, 1.0],  // black
-        [1.0, 0.0, 0.0, 1.0],  // red
-        [1.0, 1.0, 0.0, 1.0],  // yellow
-        [0.0, 1.0, 0.0, 1.0],  // green
-        [0.0, 0.0, 1.0, 1.0],  // blue
-        [1.0, 0.0, 1.0, 1.0],  // magenta
-        [0.0, 1.0, 1.0, 1.0],  // cyan
-        [1.0, 1.0, 1.0, 1.0]   // white
+        [0.0, 0.0, 0.0, 1.0], // black
+        [1.0, 0.0, 0.0, 1.0], // red
+        [1.0, 1.0, 0.0, 1.0], // yellow
+        [0.0, 1.0, 0.0, 1.0], // green
+        [0.0, 0.0, 1.0, 1.0], // blue
+        [1.0, 0.0, 1.0, 1.0], // magenta
+        [0.0, 1.0, 1.0, 1.0], // cyan
+        [1.0, 1.0, 1.0, 1.0] // white
     ];
-
-    // We need to parition the quad into two triangles in order for
-    // WebGL to be able to render it.  In this case, we create two
-    // triangles from the quad indices
-
-    //vertex color assigned by the index of the vertex
-
     var indices = [a, b, c, a, c, d];
 
     for (var i = 0; i < indices.length; ++i) {
         pointsSnake.push(vertices[indices[i]]);
-        //colors.push( vertexColors[indices[i]] );
 
-        // for solid colored faces use 
         colorsSnake.push(vertexColors[a]);
 
     }
@@ -270,6 +252,7 @@ function Snake(head) {
         size: 0.5,
         color: c,
         head: head, // True ef haus, false annars
+        dir: 0,
     };
 }
 
@@ -287,13 +270,12 @@ function moveSnake(snake, direction) {
 
     switch (direction) {
         case 0: // Niður
-            //console.log(snake.pos);
             snake.pos = {
                 x: snake.pos.x,
                 y: snake.pos.y - snake.speed,
                 z: snake.pos.z,
             };
-            if(snake.pos.y <= -1.0){
+            if (snake.pos.y <= -1.0) {
                 snake.pos = {
                     x: snake.pos.x,
                     y: 0.9 + snake.speed,
@@ -307,22 +289,21 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y + snake.speed,
                 z: snake.pos.z,
             };
-            if(snake.pos.y >= 1.0){
+            if (snake.pos.y >= 1.0) {
                 snake.pos = {
                     x: snake.pos.x,
                     y: -0.9 - snake.speed,
                     z: snake.pos.z,
                 }
             }
-            
+
         case 2: // Hægri 
-            
             snake.pos = {
                 x: snake.pos.x - snake.speed,
                 y: snake.pos.y,
                 z: snake.pos.z,
             };
-            if(snake.pos.x <= -1.0){
+            if (snake.pos.x <= -1.0) {
                 snake.pos = {
                     x: 0.9 + snake.speed,
                     y: snake.pos.y,
@@ -336,7 +317,7 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y,
                 z: snake.pos.z,
             };
-            if(snake.pos.x >= 1.0){
+            if (snake.pos.x >= 1.0) {
                 snake.pos = {
                     x: -0.9 - snake.speed,
                     y: snake.pos.y,
@@ -351,7 +332,7 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y,
                 z: snake.pos.z - snake.speed,
             };
-            if(snake.pos.z <= -1.0){
+            if (snake.pos.z <= -1.0) {
                 snake.pos = {
                     x: snake.pos.x,
                     y: snake.pos.y,
@@ -366,7 +347,7 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y,
                 z: snake.pos.z + snake.speed,
             };
-            if(snake.pos.z >= 1.0){
+            if (snake.pos.z >= 1.0) {
                 snake.pos = {
                     x: snake.pos.x,
                     y: snake.pos.y,
@@ -383,13 +364,12 @@ function moveSnake(snake, direction) {
 function checkCollision(snake) {
     let collision = false;
     for (let i = 1; i < snakeBody.length; i++) {
-        if (calcDist(snake, snakeBody[i]) ) {
+        if (calcDist(snake, snakeBody[i])) {
             collision = true;
             return collision;
         }
     }
     return collision;
-
 }
 
 function calcDist(snakeHead, snake) {
@@ -402,64 +382,77 @@ function calcDist(snakeHead, snake) {
     } else {
         return false;
     }
-
 }
 
 function explode() {
     for (let i = 0; i < snakeBody.length; i++) {
-        snakeBody[i].color = vec4(Math.random(),Math.random(),Math.random(), 1.0);
+        snakeBody[i].color = vec4(Math.random(), Math.random(), Math.random(), 1.0);
         snakeBody[i].speed = getRandomNum(0.3, 0.01);
-        snakeBody[i].pos = {
-            x: snakeBody[i].pos.x - snakeBody[i].speed,
-            y: snakeBody[i].pos.y - snakeBody[i].speed,
-            z: snakeBody[i].pos.z + snakeBody[i].speed,
-        }
+        snakeBody[i].dir = getRandomInt(6);
     }
 }
+
 function gameOver() {
-    for (let i = 0; i < snakeBody.length; i++) {
-        snakeBody[i].speed = 0;
-    }
     isGameOver = true;
+    gameMenu.style.display = "block";
+}
+
+function restart() {
+    snakeBody = [];
+    snakeBody.push(Snake(true));
+
+    for (let i = 0; i < 4; i++) {
+        snakeBody.push(Snake(false));
+    }
+    drawCounter = 1;
+    timeInDir = 10;
+    timeToGrow = 50;
+    movesExplosion = 0;
+    movesTillGrowth = 0;
+    isGameOver = false;
+    gameMenu.style.display = "none";
+}
+
+function randomTravelValue() {
+    timeInDir = getRandomInt(16) + 5;
+    document.getElementById("sliderTime").value = timeInDir;
 }
 
 function getRandomNum(MAX, MIN) {
-    return Math.random()*(MAX - MIN) + MIN;
+    return Math.random() * (MAX - MIN) + MIN;
 }
 
 function getRandomInt(max) {
     return Math.floor(Math.random() * Math.floor(max));
-  }
+}
 
 function render(time) {
-    //setTimeout(function () {
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // Vinstra auga...
-        var mv = lookAt(vec3(0.0, 0.0, zDist),
-            vec3(0.0, 0.0, zDist + 2.0),
-            vec3(0.0, 1.0, 0.0));
-        mv = mult(mv, mult(rotateX(spinX), rotateY(spinY)));
-        if (!isGameOver) {
-            
+    // Vinstra auga...
+    var mv = lookAt(vec3(0.0, 0.0, zDist),
+        vec3(0.0, 0.0, zDist + 2.0),
+        vec3(0.0, 1.0, 0.0));
+    mv = mult(mv, mult(rotateX(spinX), rotateY(spinY)));
+    if (!isGameOver) {
+
         dt = time - old_time;
-        if(Math.abs(dt) >= speed){
+        if (Math.abs(dt) >= speed) {
             for (let i = snakeBody.length - 1; i > 0; i--) {
                 snakeBody[i].pos = snakeBody[i - 1].pos;
             }
-            
-            /*if (countMoves == timeInDir) {
-                console.log(timeInDir);
+
+            if (countMoves == timeInDir) {
                 prevDirection = userDirection;
                 userDirection = getRandomInt(6);
 
-                while (prevDirection < userDirection && prevDirection+1 == userDirection || prevDirection > userDirection && prevDirection-1 == userDirection) {
+                while (prevDirection < userDirection && prevDirection + 1 == userDirection || prevDirection > userDirection && prevDirection - 1 == userDirection) {
                     userDirection = getRandomInt(6)
-                }  
+                }
                 countMoves = 0;
-            }*/
+            }
             moveSnake(snakeBody[0], userDirection);
-            if(checkCollision(snakeBody[0])){
+            if (checkCollision(snakeBody[0])) {
                 explode();
                 gameOver();
             }
@@ -469,23 +462,34 @@ function render(time) {
             old_time = time;
         }
 
-        if(movesTillGrowth >= timeToGrow) {
+        if (movesTillGrowth >= timeToGrow) {
             snakeBody.push(Snake(false));
             snakeBody[snakeBody.length - 1].pos = snakeBody[snakeBody.length - 2].pos;
             movesTillGrowth = 0;
         }
-    
-        
+
+
+    } else {
+        dt = time - old_time;
+        if (Math.abs(dt) >= speed) {
+            for (let i = 0; i < snakeBody.length; i++) {
+                moveSnake(snakeBody[i], snakeBody[i].dir);
+            }
+            movesExplosion++;
+            old_time = time;
+        }
+        if (movesExplosion == 10) {
+            snakeBody = [];
+        }
     }
     for (let i = 0; i < snakeBody.length; i++) {
         drawSnake(mv, snakeBody[i], i);
-        
     }
 
-        
-        gl.uniform4fv(colorLoc, vec4(0.0, 1.0, 0.0, 1.0));
-        gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
-        gl.drawArrays(gl.LINES, NumVerticesSnake, NumVerticesBox);
+
+    gl.uniform4fv(colorLoc, vec4(0.0, 1.0, 0.0, 1.0));
+    gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
+    gl.drawArrays(gl.LINES, NumVerticesSnake, NumVerticesBox);
 
     requestAnimFrame(render);
 }
