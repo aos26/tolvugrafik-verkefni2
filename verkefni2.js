@@ -16,6 +16,9 @@ var colors = [];
 var pointsSnake = [];
 var colorsSnake = [];
 var drawCounter = 1;
+var timeInDir = 10;
+var timeToGrow = 50;
+var movesTillGrowth = 0;
 
 var vBuffer;
 var vPosition;
@@ -62,6 +65,7 @@ let speed = 200;
 let dt = 0;
 
 let userDirection = 0;
+let prevDirection = 0;
 
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
@@ -108,6 +112,13 @@ window.onload = function init() {
         snakeBody.push(Snake(false));
         //snakeBody.unshift(Snake(false));
 
+    }
+
+    document.getElementById("slider").onchange = function(event) {
+        timeInDir = event.target.value;
+    }
+    document.getElementById("slider").onchange = function(event) {
+        movesTillGrowth = event.target.value;
     }
 
     //snakeBody.reverse();
@@ -170,6 +181,16 @@ window.onload = function init() {
 
     render(0);
 }
+
+/*
+function drawFrame(mv, snake) {
+    mv = mult(mv, translate(snake.pos.x * 2 - 5, snake.pos.y * 2 - 19, snake.pos.z * 2 - 5));
+    // white frame arond the block
+    gl.uniform4fv(colorLoc, vec4(0.5, 0.5, 0.5, 1.0));
+    gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
+    gl.drawArrays(gl.LINE_STRIP, Numfill, Numframe);
+  }
+  */
 
 function colorCube() {
     quad(1, 0, 3, 2);
@@ -269,6 +290,13 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y - snake.speed,
                 z: snake.pos.z,
             };
+            if(snake.pos.y <= -1.0){
+                snake.pos = {
+                    x: snake.pos.x,
+                    y: 0.9 + snake.speed,
+                    z: snake.pos.z,
+                }
+            }
             break;
         case 1: // Upp
             snake.pos = {
@@ -276,6 +304,14 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y + snake.speed,
                 z: snake.pos.z,
             };
+            if(snake.pos.y >= 1.0){
+                snake.pos = {
+                    x: snake.pos.x,
+                    y: -0.9 - snake.speed,
+                    z: snake.pos.z,
+                }
+            }
+            
         case 2: // Hægri 
             
             snake.pos = {
@@ -312,6 +348,13 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y,
                 z: snake.pos.z - snake.speed,
             };
+            if(snake.pos.z <= 1.0){
+                snake.pos = {
+                    x: snake.pos.x,
+                    y: snake.pos.y,
+                    z: 0.9 + snake.speed,
+                }
+            }
             break;
         case 5: // Til baka
             snake.pos = {
@@ -319,6 +362,13 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y,
                 z: snake.pos.z + snake.speed,
             };
+            if(snake.pos.z >= 1.0){
+                snake.pos = {
+                    x: snake.pos.x,
+                    y: snake.pos.y,
+                    z: -0.9 - snake.speed,
+                }
+            }
         default:
             break;
     }
@@ -345,18 +395,31 @@ function render(time) {
                 snakeBody[i].pos = snakeBody[i - 1].pos;
             }
             
-            if (countMoves == 10) {
+            if (countMoves == timeInDir) {
+                console.log(timeInDir);
+                prevDirection = userDirection;
                 userDirection = getRandomInt(6);
+
+                while (prevDirection < userDirection && prevDirection+1 == userDirection || prevDirection > userDirection && prevDirection-1 == userDirection) {
+                    userDirection = getRandomInt(6)
+                }  
                 countMoves = 0;
             }
             moveSnake(snakeBody[0], userDirection);
             countMoves++;
+            movesTillGrowth++;
 
             old_time = time;
+        }
+
+        if(movesTillGrowth == timeToGrow) {
+            snakeBody.push(Snake(false));
+            movesTillGrowth = 0;
         }
     
         for (let i = 0; i < snakeBody.length; i++) {
             drawSnake(mv, snakeBody[i], i);
+            //drawFrame(mv, snakeBody[i]);
         }
         //mv = mult( mv, scalem ( (15), (15), (15) ) );
         // Teikna kassa
