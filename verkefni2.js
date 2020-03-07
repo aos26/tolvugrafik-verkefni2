@@ -67,6 +67,8 @@ let dt = 0;
 let userDirection = 0;
 let prevDirection = 0;
 
+let isGameOver = false;
+
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
 
@@ -264,7 +266,7 @@ function Snake(head) {
             y: 0.0,
             z: 0.0,
         },
-        speed: 0.1,
+        speed: 0.125,
         size: 0.5,
         color: c,
         head: head, // True ef haus, false annars
@@ -277,7 +279,7 @@ function drawSnake(mv, snake, i) {
 
     gl.uniform4fv(colorLoc, snake.color);
     gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
-    gl.drawArrays(gl.TRIANGLES, 0, NumVerticesSnake);//NumVerticesSnake);
+    gl.drawArrays(gl.TRIANGLES, 0, NumVerticesSnake);
 }
 
 
@@ -285,6 +287,7 @@ function moveSnake(snake, direction) {
 
     switch (direction) {
         case 0: // Niður
+            //console.log(snake.pos);
             snake.pos = {
                 x: snake.pos.x,
                 y: snake.pos.y - snake.speed,
@@ -348,7 +351,7 @@ function moveSnake(snake, direction) {
                 y: snake.pos.y,
                 z: snake.pos.z - snake.speed,
             };
-            if(snake.pos.z <= 1.0){
+            if(snake.pos.z <= -1.0){
                 snake.pos = {
                     x: snake.pos.x,
                     y: snake.pos.y,
@@ -357,6 +360,7 @@ function moveSnake(snake, direction) {
             }
             break;
         case 5: // Til baka
+
             snake.pos = {
                 x: snake.pos.x,
                 y: snake.pos.y,
@@ -369,10 +373,58 @@ function moveSnake(snake, direction) {
                     z: -0.9 - snake.speed,
                 }
             }
+            break;
         default:
             break;
     }
 
+}
+
+function checkCollision(snake) {
+    let collision = false;
+    for (let i = 1; i < snakeBody.length; i++) {
+        if (calcDist(snake, snakeBody[i]) ) {
+            collision = true;
+            return collision;
+        }
+    }
+    return collision;
+
+}
+
+function calcDist(snakeHead, snake) {
+    let x = Math.abs(snakeHead.pos.x - snake.pos.x);
+    let y = Math.abs(snakeHead.pos.y - snake.pos.y);
+    let z = Math.abs(snakeHead.pos.z - snake.pos.z);
+
+    if (x <= 0.01 && y <= 0.01 && z <= 0.01) {
+        return true;
+    } else {
+        return false;
+    }
+
+}
+
+function explode() {
+    for (let i = 0; i < snakeBody.length; i++) {
+        snakeBody[i].color = vec4(Math.random(),Math.random(),Math.random(), 1.0);
+        snakeBody[i].speed = getRandomNum(0.3, 0.01);
+        snakeBody[i].pos = {
+            x: snakeBody[i].pos.x - snakeBody[i].speed,
+            y: snakeBody[i].pos.y - snakeBody[i].speed,
+            z: snakeBody[i].pos.z + snakeBody[i].speed,
+        }
+    }
+}
+function gameOver() {
+    for (let i = 0; i < snakeBody.length; i++) {
+        snakeBody[i].speed = 0;
+    }
+    isGameOver = true;
+}
+
+function getRandomNum(MAX, MIN) {
+    return Math.random()*(MAX - MIN) + MIN;
 }
 
 function getRandomInt(max) {
@@ -388,14 +440,15 @@ function render(time) {
             vec3(0.0, 0.0, zDist + 2.0),
             vec3(0.0, 1.0, 0.0));
         mv = mult(mv, mult(rotateX(spinX), rotateY(spinY)));
-
+        if (!isGameOver) {
+            
         dt = time - old_time;
         if(Math.abs(dt) >= speed){
             for (let i = snakeBody.length - 1; i > 0; i--) {
                 snakeBody[i].pos = snakeBody[i - 1].pos;
             }
             
-            if (countMoves == timeInDir) {
+            /*if (countMoves == timeInDir) {
                 console.log(timeInDir);
                 prevDirection = userDirection;
                 userDirection = getRandomInt(6);
@@ -404,31 +457,35 @@ function render(time) {
                     userDirection = getRandomInt(6)
                 }  
                 countMoves = 0;
-            }
+            }*/
             moveSnake(snakeBody[0], userDirection);
+            if(checkCollision(snakeBody[0])){
+                explode();
+                gameOver();
+            }
             countMoves++;
             movesTillGrowth++;
 
             old_time = time;
         }
 
-        if(movesTillGrowth == timeToGrow) {
+        if(movesTillGrowth >= timeToGrow) {
             snakeBody.push(Snake(false));
+            snakeBody[snakeBody.length - 1].pos = snakeBody[snakeBody.length - 2].pos;
             movesTillGrowth = 0;
         }
     
-        for (let i = 0; i < snakeBody.length; i++) {
-            drawSnake(mv, snakeBody[i], i);
-            //drawFrame(mv, snakeBody[i]);
-        }
-        //mv = mult( mv, scalem ( (15), (15), (15) ) );
-        // Teikna kassa
+        
+    }
+    for (let i = 0; i < snakeBody.length; i++) {
+        drawSnake(mv, snakeBody[i], i);
+        
+    }
+
+        
         gl.uniform4fv(colorLoc, vec4(0.0, 1.0, 0.0, 1.0));
         gl.uniformMatrix4fv(mvLoc, false, flatten(mv));
         gl.drawArrays(gl.LINES, NumVerticesSnake, NumVerticesBox);
 
-
-        /*window.requestAnimFrame(render);
-    }, 600);*/
     requestAnimFrame(render);
 }
